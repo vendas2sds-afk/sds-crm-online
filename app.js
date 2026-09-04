@@ -41,7 +41,11 @@ async function signUp() {
     showAuthMessage("Informe o e-mail e uma senha com pelo menos 6 caracteres.");
     return;
   }
-  const { error } = await supabaseClient.auth.signUp({ email, password });
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
+  });
   showAuthMessage(error ? error.message : "Conta criada. Verifique seu e-mail antes de entrar.");
 }
 async function initializeAuth() {
