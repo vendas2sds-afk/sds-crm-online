@@ -15,7 +15,6 @@
         <button class="nav-item active" data-view="dashboard">Dashboard</button>
         <button class="nav-item" data-view="clients">Clientes</button>
         <button class="nav-item" data-view="pipeline">Pipeline</button>
-        <button class="nav-item" data-view="agenda">Agenda</button>
         <button class="nav-item" data-view="alerts">Alertas</button>
       </nav>
       <div class="sidebar-footer">Modo gratuito<br><span>Dados locais no navegador</span></div>
@@ -24,13 +23,12 @@
       <header class="topbar">
         <button id="menu-toggle" class="icon-button" aria-label="Abrir menu">☰</button>
         <div><span class="eyebrow">SDS CRM ONLINE</span><h1 id="page-title">Dashboard</h1></div>
-        <div class="top-actions"><button id="google-button" class="secondary-button">Conectar Google Agenda</button><button id="sheets-button" class="secondary-button">Conectar Google Sheets</button><button id="new-button" class="secondary-button">Novo registro</button><button id="export-button" class="secondary-button">Exportar</button><button id="import-button" class="primary-button">Importar planilha</button></div>
+        <div class="top-actions"><button id="sheets-button" class="secondary-button">Conectar Google Sheets</button><button id="new-button" class="secondary-button">Novo registro</button><button id="export-button" class="secondary-button">Exportar</button><button id="import-button" class="primary-button">Importar planilha</button></div>
         <input id="csv-input" type="file" accept=".csv,text/csv" hidden>
       </header>
       <section id="app-content" class="content" aria-live="polite"></section>
     </main>
   </div>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="app.js?v=20260904-filtros-final"></script>
+  <script src="app.js?v=20260904-sem-agenda"></script>
 </body>
 </html>

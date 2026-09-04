@@ -1,14 +1,9 @@
 const state = {
   clients: JSON.parse(localStorage.getItem("sds-crm-clients") || "[]"),
   opportunities: JSON.parse(localStorage.getItem("sds-crm-opportunities") || "[]"),
-  activities: JSON.parse(localStorage.getItem("sds-crm-activities") || "[]")
 };
 const stages = ["Prospecção", "Contato realizado", "Necessidade identificada", "Orçamento enviado", "Negociação", "Fechado ganho", "Fechado perdido"];
-const GOOGLE_CLIENT_ID = "616497968178-8aemogkqa0kasuaa2n5tat2vfllnvmlf.apps.googleusercontent.com";
-const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const DEFAULT_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VZCZdkhkaIX57a1Tbl60gVGprhUf44yi67ymVGqQN0I/edit?usp=sharing";
-let googleTokenClient = null;
-let googleAccessToken = sessionStorage.getItem("sds-google-calendar-token") || "";
 const savedSheetsUrl = localStorage.getItem("sds-google-sheets-url") || DEFAULT_SHEETS_URL;
 const content = document.querySelector("#app-content");
 const title = document.querySelector("#page-title");
@@ -20,36 +15,7 @@ const money = value => Number(value || 0).toLocaleString("pt-BR", { style: "curr
 const save = () => {
   localStorage.setItem("sds-crm-clients", JSON.stringify(state.clients));
   localStorage.setItem("sds-crm-opportunities", JSON.stringify(state.opportunities));
-  localStorage.setItem("sds-crm-activities", JSON.stringify(state.activities));
 };
-function setGoogleStatus(connected) {
-  const button = document.querySelector("#google-button");
-  if (!button) return;
-  button.textContent = connected ? "Google Agenda conectado" : "Conectar Google Agenda";
-  button.classList.toggle("connected", connected);
-}
-function connectGoogleCalendar() {
-  if (!window.google?.accounts?.oauth2) {
-    alert("O componente de autenticação do Google ainda está carregando. Tente novamente em alguns segundos.");
-    return;
-  }
-  if (!googleTokenClient) {
-    googleTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: CALENDAR_SCOPE,
-      callback: response => {
-        if (response.error) {
-          alert(`Não foi possível conectar ao Google Agenda: ${response.error}`);
-          return;
-        }
-        googleAccessToken = response.access_token;
-        sessionStorage.setItem("sds-google-calendar-token", googleAccessToken);
-        setGoogleStatus(true);
-      }
-    });
-  }
-  googleTokenClient.requestAccessToken({ prompt: googleAccessToken ? "" : "select_account" });
-}
 function sheetsCsvUrl(value) {
   try {
     const url = new URL(value);
@@ -106,38 +72,6 @@ async function loadGoogleSheet(value, csvUrl, options = {}) {
     button.disabled = false;
     button.textContent = localStorage.getItem("sds-google-sheets-url") ? "Google Sheets conectado" : "Conectar Google Sheets";
   }
-}
-async function createCalendarEvent(client) {
-  if (!googleAccessToken) {
-    connectGoogleCalendar();
-    alert("Autorize o Google Agenda e clique novamente em 'Criar evento'.");
-    return;
-  }
-  const start = new Date();
-  start.setDate(start.getDate() + 1);
-  start.setHours(9, 0, 0, 0);
-  const end = new Date(start);
-  end.setMinutes(end.getMinutes() + 30);
-  const event = {
-    summary: `Follow-up: ${client.name}`,
-    description: `Vendas: ${client.sales}\nOrçamentos: ${client.quotes}`,
-    location: `${client.city || ""} ${client.state || ""}`.trim(),
-    start: { dateTime: start.toISOString(), timeZone: "America/Sao_Paulo" },
-    end: { dateTime: end.toISOString(), timeZone: "America/Sao_Paulo" }
-  };
-  const result = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${googleAccessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(event)
-  });
-  if (!result.ok) {
-    sessionStorage.removeItem("sds-google-calendar-token");
-    googleAccessToken = "";
-    setGoogleStatus(false);
-    throw new Error("A autorização expirou ou a Google Calendar API não está ativada.");
-  }
-  const created = await result.json();
-  window.open(created.htmlLink, "_blank", "noopener");
 }
 const monthAge = dateText => {
   if (!dateText) return Infinity;
@@ -200,7 +134,7 @@ function renderDashboard() {
     <div class="card accent-yellow"><span class="card-icon">!</span><small>Precisam de atenção</small><strong>${(alertCounts[1] + alertCounts[2]).toLocaleString("pt-BR")}</strong><span class="card-caption">Sem contato recente</span></div>
     <div class="card accent-purple"><span class="card-icon">R$</span><small>Pipeline aberto</small><strong>${money(state.opportunities.reduce((sum, item) => sum + Number(item.value || 0), 0))}</strong><span class="card-caption">${state.opportunities.length} oportunidade(s)</span></div></div>
     <div class="dashboard-grid dashboard-main"><div class="panel"><div class="panel-heading"><div><span class="panel-kicker">ACOMPANHAMENTO</span><h3>Saúde da carteira</h3></div><button class="link-button" data-dashboard-view="alerts">Ver alertas</button></div><div class="health-bars">${[["green","Ativos","Últimos 3 meses",alertCounts[0]],["yellow","Atenção","3 a 6 meses",alertCounts[1]],["red","Reativar","Mais de 6 meses",alertCounts[2]]].map(([css,label,subtitle,count]) => `<div class="health-row"><div class="health-label"><span class="health-dot ${css}"></span><div><b>${label}</b><small>${subtitle}</small></div></div><strong>${count}</strong><div class="health-track"><div class="health-fill ${css}" style="width:${state.clients.length ? count / state.clients.length * 100 : 0}%"></div></div></div>`).join("")}</div></div>
-    <div class="panel"><div class="panel-heading"><div><span class="panel-kicker">ATIVIDADE</span><h3>Próximos passos</h3></div><button class="link-button" data-dashboard-view="agenda">Abrir agenda</button></div>${state.activities.slice(0, 4).map(item => `<div class="activity-item"><span class="activity-dot"></span><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.type || "Follow-up")} · ${escapeHtml(item.date || "Sem data")}</small></div></div>`).join("") || '<p class="empty">Nenhuma atividade cadastrada ainda.</p>'}</div></div>
+    <div class="panel"><div class="panel-heading"><div><span class="panel-kicker">ATENÇÃO</span><h3>Próximas ações</h3></div><button class="link-button" data-dashboard-view="alerts">Ver alertas</button></div><p class="empty">Use os alertas para priorizar os próximos contatos.</p></div></div>
     <div class="dashboard-grid dashboard-bottom"><div class="panel"><div class="panel-heading"><div><span class="panel-kicker">CARTEIRA</span><h3>Clientes com atividade mais recente</h3></div><button class="link-button" data-dashboard-view="clients">Ver todos</button></div><div class="client-list">${recentClients.map(item => `<div class="client-row"><div class="client-avatar region-${regions.indexOf(item.region || "Sem região") % regionColors.length}">${escapeHtml((item.name || "?").slice(0, 1).toUpperCase())}</div><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.city || "Local não informado")} · ${escapeHtml(item.lastDate || "Sem atividade")}</small></div><span class="status ${alertInfo(monthAge(item.lastDate)).css}">${alertInfo(monthAge(item.lastDate)).label}</span></div>`).join("") || '<p class="empty">Importe sua planilha para visualizar clientes.</p>'}</div></div><div class="panel pipeline-panel"><div class="panel-heading"><div><span class="panel-kicker">OPORTUNIDADES</span><h3>Funil comercial</h3></div><button class="link-button" data-dashboard-view="pipeline">Ver pipeline</button></div>${byStage.map(([stage, count]) => `<div class="bar"><span>${stage}</span><div class="bar-track"><div class="bar-fill" style="width:${count / max * 100}%"></div></div><b>${count}</b></div>`).join("")}</div></div>`;
   content.querySelectorAll("[data-dashboard-view]").forEach(button => { button.onclick = () => navigate(button.dataset.dashboardView); });
   content.querySelector("#dashboard-region").onchange = event => { dashboardRegion = event.target.value; renderDashboard(); };
@@ -216,10 +150,6 @@ function renderClients() {
 function renderPipeline() {
   title.textContent = "Pipeline";
   content.innerHTML = `<div class="intro"><h2>Pipeline comercial</h2><p>Oportunidades organizadas por etapa.</p></div><div class="dashboard-grid">${stages.map(stage => `<div class="panel"><h3>${stage}</h3>${state.opportunities.filter(item => item.stage === stage).map(item => `<p><b>${item.title}</b><br>${money(item.value)}</p>`).join("") || '<p class="empty">Nenhuma oportunidade.</p>'}</div>`).join("")}</div>`;
-}
-function renderAgenda() {
-  title.textContent = "Agenda";
-  content.innerHTML = `<div class="intro"><h2>Agenda comercial</h2><p>Follow-ups e atividades para a equipe.</p></div><div class="panel table-wrap"><table><thead><tr><th>Atividade</th><th>Tipo</th><th>Data</th></tr></thead><tbody>${state.activities.map(item => `<tr><td>${item.title}</td><td>${item.type || "Follow-up"}</td><td>${item.date || "-"}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">Nenhuma atividade cadastrada.</td></tr>'}</tbody></table></div>`;
 }
 function renderAlerts() {
   title.textContent = "Alertas";
@@ -241,42 +171,37 @@ function showClient(client) {
   if (!client) return;
   const info = alertInfo(monthAge(client.lastDate));
   const mapsQuery = encodeURIComponent(`${client.name}, ${client.city || ""}, ${client.state || ""}`);
-  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="client-modal"><div class="modal client-detail"><h2>${escapeHtml(client.name)}</h2><p>${escapeHtml(client.city || "Cidade não informada")} / ${escapeHtml(client.state || "")}</p><div class="contact-box"><b>Contato do cliente</b><span>Nome: ${escapeHtml(client.name || "Não informado")}</span><span>Telefone: ${escapeHtml(client.phone || "Não informado")}</span><span>E-mail: ${escapeHtml(client.email || "Não informado")}</span></div><div class="detail-kpis"><div class="detail-kpi"><small>Última atividade</small><strong>${escapeHtml(client.lastDate || "Não informado")}</strong></div><div class="detail-kpi"><small>Vendas</small><strong>${client.sales}</strong></div><div class="detail-kpi"><small>Valor movimentado</small><strong>${money(client.total)}</strong></div></div><p><span class="status ${info.css}">${info.label}</span></p><p>Contatos encontrados: <b>${client.contacts}</b> · Orçamentos: <b>${client.quotes}</b></p><p><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" rel="noopener">Abrir no Google Maps</a> · <a href="https://www.openstreetmap.org/search?query=${mapsQuery}" target="_blank" rel="noopener">Abrir no OpenStreetMap</a></p><div class="modal-actions"><button class="primary-button" data-calendar> Criar evento no Google Agenda</button><a class="secondary-button" href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Follow-up: ${client.name}`)}&details=${encodeURIComponent(`Cliente: ${client.name}`)}&location=${mapsQuery}" target="_blank" rel="noopener">Abrir formulário</a><button class="secondary-button" data-close>Fechar</button></div></div></div>`);
-  document.querySelector("#client-modal [data-calendar]").onclick = async () => {
-    try { await createCalendarEvent(client); } catch (error) { alert(error.message); }
-  };
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="client-modal"><div class="modal client-detail"><h2>${escapeHtml(client.name)}</h2><p>${escapeHtml(client.city || "Cidade não informada")} / ${escapeHtml(client.state || "")}</p><div class="contact-box"><b>Contato do cliente</b><span>Nome: ${escapeHtml(client.name || "Não informado")}</span><span>Telefone: ${escapeHtml(client.phone || "Não informado")}</span><span>E-mail: ${escapeHtml(client.email || "Não informado")}</span></div><div class="detail-kpis"><div class="detail-kpi"><small>Última atividade</small><strong>${escapeHtml(client.lastDate || "Não informado")}</strong></div><div class="detail-kpi"><small>Vendas</small><strong>${client.sales}</strong></div><div class="detail-kpi"><small>Valor movimentado</small><strong>${money(client.total)}</strong></div></div><p><span class="status ${info.css}">${info.label}</span></p><p>Contatos encontrados: <b>${client.contacts}</b> · Orçamentos: <b>${client.quotes}</b></p><p><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" rel="noopener">Abrir no Google Maps</a> · <a href="https://www.openstreetmap.org/search?query=${mapsQuery}" target="_blank" rel="noopener">Abrir no OpenStreetMap</a></p><div class="modal-actions"><button class="secondary-button" data-close>Fechar</button></div></div></div>`);
   document.querySelector("#client-modal [data-close]").onclick = () => document.querySelector("#client-modal").remove();
 }
 function navigate(view) {
   currentView = view;
   document.querySelectorAll(".nav-item").forEach(item => item.classList.toggle("active", item.dataset.view === view));
   title.textContent = view === "dashboard" ? "Dashboard" : view[0].toUpperCase() + view.slice(1);
-  ({ dashboard: renderDashboard, clients: renderClients, pipeline: renderPipeline, agenda: renderAgenda, alerts: renderAlerts }[view])();
+  ({ dashboard: renderDashboard, clients: renderClients, pipeline: renderPipeline, alerts: renderAlerts }[view])();
 }
 function showModal(kind) {
-  const labels = kind === "client" ? ["Empresa", "CNPJ", "Cidade", "Região"] : kind === "opportunity" ? ["Título", "Valor", "Etapa"] : ["Atividade", "Tipo", "Data"];
+  const labels = kind === "client" ? ["Empresa", "CNPJ", "Cidade", "Região"] : ["Título", "Valor", "Etapa"];
   const fields = kind === "opportunity" ? `<label>${labels[0]}<input name="title" required></label><label>${labels[1]}<input name="value" type="number" min="0" step="0.01"></label><label>${labels[2]}<select name="stage">${stages.map(stage => `<option>${stage}</option>`).join("")}</select></label>` :
     kind === "client" ? labels.map((label, index) => `<label>${label}<input name="${["name","cnpj","city","region"][index]}" ${index === 0 ? "required" : ""}></label>`).join("") :
-    `<label>${labels[0]}<input name="title" required></label><label>${labels[1]}<select name="type"><option>Follow-up</option><option>Ligação</option><option>WhatsApp</option><option>Reunião</option></select></label><label>${labels[2]}<input name="date" type="date"></label>`;
-  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal"><form class="modal"><h2>Novo ${kind === "client" ? "cliente" : kind === "opportunity" ? "oportunidade" : "atividade"}</h2><div class="form-grid">${fields}</div><div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancelar</button><button class="primary-button">Salvar</button></div></form></div>`);
+    labels.map((label, index) => `<label>${label}<input name="${["name","cnpj","city","region"][index]}" ${index === 0 ? "required" : ""}></label>`).join("");
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal"><form class="modal"><h2>Novo ${kind === "client" ? "cliente" : "oportunidade"}</h2><div class="form-grid">${fields}</div><div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancelar</button><button class="primary-button">Salvar</button></div></form></div>`);
   const modal = document.querySelector("#modal");
   modal.querySelector("[data-close]").onclick = () => modal.remove();
   modal.querySelector("form").onsubmit = event => {
     event.preventDefault(); const data = Object.fromEntries(new FormData(event.target));
     if (kind === "client") state.clients.unshift(data);
     if (kind === "opportunity") state.opportunities.unshift({ title: data.title, value: Number(data.value || 0), stage: data.stage });
-    if (kind === "activity") state.activities.unshift({ title: data.title, type: data.type, date: data.date });
     save(); modal.remove(); navigate(currentView);
   };
 }
-document.querySelector("#new-button").onclick = () => showModal(currentView === "clients" ? "client" : currentView === "pipeline" ? "opportunity" : "activity");
+document.querySelector("#new-button").onclick = () => showModal(currentView === "pipeline" ? "opportunity" : "client");
 document.querySelector("#export-button").onclick = () => {
   const clients = dashboardRegion === "all" ? state.clients : state.clients.filter(item => (item.region || "Sem região") === dashboardRegion);
   exportClients(clients, dashboardRegion === "all" ? "sds-crm-clientes" : `sds-crm-clientes-${dashboardRegion.replace(/[^a-z0-9]+/gi, "-")}`);
 };
 document.querySelector("#main-nav").addEventListener("click", event => { if (event.target.matches(".nav-item")) { navigate(event.target.dataset.view); document.querySelector(".sidebar").classList.remove("open"); } });
 document.querySelector("#menu-toggle").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
-document.querySelector("#google-button").addEventListener("click", connectGoogleCalendar);
 document.querySelector("#sheets-button").addEventListener("click", connectGoogleSheets);
 document.querySelector("#import-button").addEventListener("click", () => document.querySelector("#csv-input").click());
 document.querySelector("#csv-input").addEventListener("change", async event => {
@@ -287,7 +212,6 @@ document.querySelector("#csv-input").addEventListener("change", async event => {
   save(); navigate("clients"); event.target.value = "";
 });
 navigate("dashboard");
-setGoogleStatus(Boolean(googleAccessToken));
 if (savedSheetsUrl) {
   document.querySelector("#sheets-button").textContent = "Google Sheets conectado";
   const csvUrl = sheetsCsvUrl(savedSheetsUrl);

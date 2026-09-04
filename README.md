@@ -21,4 +21,4 @@ Abra `http://localhost:8080`.
 
 O CRM inicia sem login. Os dados importados ficam salvos no navegador com `localStorage`. A planilha padrão do SDS CRM é carregada automaticamente ao abrir o sistema; o botão **Conectar Google Sheets** permite trocar o link. Para funcionar, configure no Google Sheets: **Compartilhar → Qualquer pessoa com o link → Leitor**.
 
-O botão **Conectar Google Agenda** usa a conta Google escolhida por cada pessoa naquele navegador. Assim, cada usuário autoriza a própria agenda e os eventos são criados na agenda principal da conta autorizada. Como o CRM não possui login próprio, essa vinculação é feita por navegador e pela conta Google selecionada, não por um usuário interno do CRM.
+O CRM não possui agenda interna nem integração com o Google Agenda. O botão **Conectar Google Sheets** carrega a planilha compartilhada usada como base de clientes.
