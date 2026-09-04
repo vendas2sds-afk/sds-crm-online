@@ -13,6 +13,8 @@ const savedSheetsUrl = localStorage.getItem("sds-google-sheets-url") || DEFAULT_
 const content = document.querySelector("#app-content");
 const title = document.querySelector("#page-title");
 let dashboardRegion = "all";
+let alertRegion = "all";
+let alertLevel = "all";
 const regionColors = ["blue", "green", "orange", "purple", "teal", "pink", "gold"];
 const money = value => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const save = () => {
@@ -221,8 +223,19 @@ function renderAgenda() {
 }
 function renderAlerts() {
   title.textContent = "Alertas";
-  const groups = ["green", "yellow", "red"].map(css => ({ css, clients: state.clients.filter(item => alertInfo(monthAge(item.lastDate)).css === css) }));
-  content.innerHTML = `<div class="intro"><h2>Alertas comerciais</h2><p>Classificação baseada na última venda, orçamento ou contato encontrado na planilha.</p></div><div class="alert-grid">${groups.map(group => `<div class="panel alert-card ${group.css}"><h3>${group.css === "green" ? "Até 3 meses" : group.css === "yellow" ? "Entre 3 e 6 meses" : "Acima de 6 meses"}</h3><strong>${group.clients.length} cliente(s)</strong><p class="empty">${group.css === "red" ? "Priorizar reativação e follow-up." : group.css === "yellow" ? "Programar novo contato." : "Relacionamento ativo."}</p></div>`).join("")}</div><div class="panel table-wrap" style="margin-top:16px"><table><thead><tr><th>Cliente</th><th>Última atividade</th><th>Vendas</th><th>Orçamentos</th><th>Mapas</th></tr></thead><tbody>${state.clients.filter(item => alertInfo(monthAge(item.lastDate)).css !== "green").slice(0, 100).map(item => `<tr><td>${escapeHtml(item.name)}</td><td>${escapeHtml(item.lastDate || "Não informado")}</td><td>${item.sales}</td><td>${item.quotes}</td><td><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.city || ""} ${item.state || ""}`)}" target="_blank" rel="noopener">Google Maps</a> · <a href="https://www.openstreetmap.org/search?query=${encodeURIComponent(`${item.city || ""} ${item.state || ""}`)}" target="_blank" rel="noopener">OSM</a></td></tr>`).join("") || '<tr><td colspan="5" class="empty">Nenhum cliente em alerta.</td></tr>'}</tbody></table></div>`;
+  const regions = [...new Set(state.clients.map(item => item.region || "Sem região"))].sort((a, b) => a.localeCompare(b));
+  const filtered = state.clients.filter(item => (alertRegion === "all" || (item.region || "Sem região") === alertRegion) && (alertLevel === "all" || alertInfo(monthAge(item.lastDate)).css === alertLevel));
+  const groups = ["green", "yellow", "red"].map(css => ({ css, clients: filtered.filter(item => alertInfo(monthAge(item.lastDate)).css === css) }));
+  content.innerHTML = `<div class="intro alerts-heading"><div><h2>Alertas comerciais</h2><p>Classificação baseada na última venda, orçamento ou contato encontrado na planilha.</p></div><div class="dashboard-actions"><label class="region-filter">Região<select id="alerts-region"><option value="all">Todas as regiões</option>${regions.map(region => `<option value="${escapeHtml(region)}" ${region === alertRegion ? "selected" : ""}>${escapeHtml(region)}</option>`).join("")}</select></label><label class="region-filter">Tipo de alerta<select id="alerts-level"><option value="all">Todos os alertas</option><option value="green" ${alertLevel === "green" ? "selected" : ""}>Até 3 meses</option><option value="yellow" ${alertLevel === "yellow" ? "selected" : ""}>Entre 3 e 6 meses</option><option value="red" ${alertLevel === "red" ? "selected" : ""}>Acima de 6 meses</option></select></label><button class="secondary-button" id="export-filtered">Exportar Excel</button></div></div><div class="alert-grid">${groups.map(group => `<div class="panel alert-card ${group.css}"><h3>${group.css === "green" ? "Até 3 meses" : group.css === "yellow" ? "Entre 3 e 6 meses" : "Acima de 6 meses"}</h3><strong>${group.clients.length} cliente(s)</strong><p class="empty">${group.css === "red" ? "Priorizar reativação e follow-up." : group.css === "yellow" ? "Programar novo contato." : "Relacionamento ativo."}</p></div>`).join("")}</div><div class="panel table-wrap" style="margin-top:16px"><table><thead><tr><th>Cliente</th><th>Alerta</th><th>Região</th><th>Última atividade</th><th>Vendas</th><th>Orçamentos</th><th>Mapas</th></tr></thead><tbody>${filtered.slice(0, 100).map(item => `<tr><td>${escapeHtml(item.name)}</td><td><span class="status ${alertInfo(monthAge(item.lastDate)).css}">${alertInfo(monthAge(item.lastDate)).label}</span></td><td>${escapeHtml(item.region || "-")}</td><td>${escapeHtml(item.lastDate || "Não informado")}</td><td>${item.sales}</td><td>${item.quotes}</td><td><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.city || ""} ${item.state || ""}`)}" target="_blank" rel="noopener">Google Maps</a> · <a href="https://www.openstreetmap.org/search?query=${encodeURIComponent(`${item.city || ""} ${item.state || ""}`)}" target="_blank" rel="noopener">OSM</a></td></tr>`).join("") || '<tr><td colspan="7" class="empty">Nenhum cliente encontrado com esses filtros.</td></tr>'}</tbody></table></div>`;
+  content.querySelector("#alerts-region").onchange = event => { alertRegion = event.target.value; renderAlerts(); };
+  content.querySelector("#alerts-level").onchange = event => { alertLevel = event.target.value; renderAlerts(); };
+  content.querySelector("#export-filtered").onclick = () => exportClients(filtered, "sds-crm-alertas");
+}
+function exportClients(clients, filename) {
+  const headers = ["Empresa", "Telefone", "E-mail", "Cidade", "Estado", "Região", "Última atividade", "Alerta", "Vendas", "Orçamentos", "Valor movimentado"];
+  const csv = [headers, ...clients.map(item => [item.name, item.phone, item.email, item.city, item.state, item.region, item.lastDate, alertInfo(monthAge(item.lastDate)).label, item.sales, item.quotes, item.total])].map(row => row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${filename}.csv`; link.click(); URL.revokeObjectURL(link.href);
 }
 function showClient(client) {
   if (!client) return;
@@ -258,8 +271,8 @@ function showModal(kind) {
 }
 document.querySelector("#new-button").onclick = () => showModal(currentView === "clients" ? "client" : currentView === "pipeline" ? "opportunity" : "activity");
 document.querySelector("#export-button").onclick = () => {
-  const file = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const link = document.createElement("a"); link.href = URL.createObjectURL(file); link.download = "sds-crm-backup.json"; link.click(); URL.revokeObjectURL(link.href);
+  const clients = dashboardRegion === "all" ? state.clients : state.clients.filter(item => (item.region || "Sem região") === dashboardRegion);
+  exportClients(clients, dashboardRegion === "all" ? "sds-crm-clientes" : `sds-crm-clientes-${dashboardRegion.replace(/[^a-z0-9]+/gi, "-")}`);
 };
 document.querySelector("#main-nav").addEventListener("click", event => { if (event.target.matches(".nav-item")) { navigate(event.target.dataset.view); document.querySelector(".sidebar").classList.remove("open"); } });
 document.querySelector("#menu-toggle").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
