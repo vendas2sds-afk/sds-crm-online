@@ -6,9 +6,6 @@ const state = {
 const stages = ["Prospecção", "Contato realizado", "Necessidade identificada", "Orçamento enviado", "Negociação", "Fechado ganho", "Fechado perdido"];
 const GOOGLE_CLIENT_ID = "616497968178-8aemogkqa0kasuaa2n5tat2vfllnvmlf.apps.googleusercontent.com";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
-const SUPABASE_URL = "https://dbhuoxuqoujuiedeyzlj.supabase.co";
-const SUPABASE_KEY = "sb_publishable_8pgtXQ46a78BeDNUm8QFww_Pnpzpdac";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let googleTokenClient = null;
 let googleAccessToken = sessionStorage.getItem("sds-google-calendar-token") || "";
 const savedSheetsUrl = localStorage.getItem("sds-google-sheets-url") || "";
@@ -20,39 +17,6 @@ const save = () => {
   localStorage.setItem("sds-crm-opportunities", JSON.stringify(state.opportunities));
   localStorage.setItem("sds-crm-activities", JSON.stringify(state.activities));
 };
-function showAuthMessage(message) {
-  document.querySelector("#auth-message").textContent = message;
-}
-function setAuthenticated(user) {
-  document.querySelector("#auth-screen").hidden = Boolean(user);
-  document.querySelector("#user-email").textContent = user ? user.email : "";
-}
-async function signIn(event) {
-  event.preventDefault();
-  const email = document.querySelector("#auth-email").value.trim();
-  const password = document.querySelector("#auth-password").value;
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) showAuthMessage("E-mail ou senha inválidos.");
-}
-async function signUp() {
-  const email = document.querySelector("#auth-email").value.trim();
-  const password = document.querySelector("#auth-password").value;
-  if (!email || password.length < 6) {
-    showAuthMessage("Informe o e-mail e uma senha com pelo menos 6 caracteres.");
-    return;
-  }
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
-  });
-  showAuthMessage(error ? error.message : "Conta criada. Verifique seu e-mail antes de entrar.");
-}
-async function initializeAuth() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  setAuthenticated(session?.user || null);
-  supabaseClient.auth.onAuthStateChange((_event, nextSession) => setAuthenticated(nextSession?.user || null));
-}
 function setGoogleStatus(connected) {
   const button = document.querySelector("#google-button");
   if (!button) return;
@@ -284,9 +248,6 @@ document.querySelector("#export-button").onclick = () => {
 document.querySelector("#main-nav").addEventListener("click", event => { if (event.target.matches(".nav-item")) { navigate(event.target.dataset.view); document.querySelector(".sidebar").classList.remove("open"); } });
 document.querySelector("#menu-toggle").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
 document.querySelector("#google-button").addEventListener("click", connectGoogleCalendar);
-document.querySelector("#auth-form").addEventListener("submit", signIn);
-document.querySelector("#signup-button").addEventListener("click", signUp);
-document.querySelector("#logout-button").addEventListener("click", async () => { await supabaseClient.auth.signOut(); });
 document.querySelector("#sheets-button").addEventListener("click", connectGoogleSheets);
 document.querySelector("#import-button").addEventListener("click", () => document.querySelector("#csv-input").click());
 document.querySelector("#csv-input").addEventListener("change", async event => {
@@ -299,4 +260,3 @@ document.querySelector("#csv-input").addEventListener("change", async event => {
 navigate("dashboard");
 setGoogleStatus(Boolean(googleAccessToken));
 if (savedSheetsUrl) document.querySelector("#sheets-button").textContent = "Google Sheets conectado";
-initializeAuth();

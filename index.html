@@ -8,20 +8,6 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="auth-screen" class="auth-screen">
-    <div class="auth-card">
-      <div class="brand auth-brand"><strong>SDS CRM</strong><span>Acesso restrito à equipe</span></div>
-      <h1>Entrar no CRM</h1>
-      <p>Use seu e-mail corporativo e sua senha.</p>
-      <form id="auth-form">
-        <label>E-mail<input id="auth-email" type="email" autocomplete="email" required placeholder="voce@empresa.com"></label>
-        <label>Senha<input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="Mínimo de 6 caracteres"></label>
-        <button class="primary-button" type="submit">Entrar</button>
-      </form>
-      <button id="signup-button" class="auth-link" type="button">Primeiro acesso? Criar conta</button>
-      <p id="auth-message" class="auth-message" role="alert"></p>
-    </div>
-  </div>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand"><strong>SDS CRM</strong><span>Gestão comercial</span></div>
@@ -38,14 +24,13 @@
       <header class="topbar">
         <button id="menu-toggle" class="icon-button" aria-label="Abrir menu">☰</button>
         <div><span class="eyebrow">SDS CRM ONLINE</span><h1 id="page-title">Dashboard</h1></div>
-        <div class="top-actions"><span id="user-email" class="user-email"></span><button id="logout-button" class="secondary-button">Sair</button><button id="google-button" class="secondary-button">Conectar Google Agenda</button><button id="sheets-button" class="secondary-button">Conectar Google Sheets</button><button id="new-button" class="secondary-button">Novo registro</button><button id="export-button" class="secondary-button">Exportar</button><button id="import-button" class="primary-button">Importar planilha</button></div>
+        <div class="top-actions"><button id="google-button" class="secondary-button">Conectar Google Agenda</button><button id="sheets-button" class="secondary-button">Conectar Google Sheets</button><button id="new-button" class="secondary-button">Novo registro</button><button id="export-button" class="secondary-button">Exportar</button><button id="import-button" class="primary-button">Importar planilha</button></div>
         <input id="csv-input" type="file" accept=".csv,text/csv" hidden>
       </header>
       <section id="app-content" class="content" aria-live="polite"></section>
     </main>
   </div>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
