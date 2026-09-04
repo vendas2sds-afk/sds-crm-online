@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172554">
+  <title>SDS CRM Online</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><strong>SDS CRM</strong><span>Gestão comercial</span></div>
+      <nav id="main-nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="clients">Clientes</button>
+        <button class="nav-item" data-view="pipeline">Pipeline</button>
+        <button class="nav-item" data-view="agenda">Agenda</button>
+        <button class="nav-item" data-view="alerts">Alertas</button>
+      </nav>
+      <div class="sidebar-footer">Modo gratuito<br><span>Dados locais no navegador</span></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button" aria-label="Abrir menu">☰</button>
+        <div><span class="eyebrow">SDS CRM ONLINE</span><h1 id="page-title">Dashboard</h1></div>
+        <div class="top-actions"><button id="google-button" class="secondary-button">Conectar Google Agenda</button><button id="sheets-button" class="secondary-button">Conectar Google Sheets</button><button id="new-button" class="secondary-button">Novo registro</button><button id="export-button" class="secondary-button">Exportar</button><button id="import-button" class="primary-button">Importar planilha</button></div>
+        <input id="csv-input" type="file" accept=".csv,text/csv" hidden>
+      </header>
+      <section id="app-content" class="content" aria-live="polite"></section>
+    </main>
+  </div>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="app.js"></script>
+</body>
+</html>
