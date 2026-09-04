@@ -6,9 +6,10 @@ const state = {
 const stages = ["Prospecção", "Contato realizado", "Necessidade identificada", "Orçamento enviado", "Negociação", "Fechado ganho", "Fechado perdido"];
 const GOOGLE_CLIENT_ID = "616497968178-8aemogkqa0kasuaa2n5tat2vfllnvmlf.apps.googleusercontent.com";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const DEFAULT_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1VZCZdkhkaIX57a1Tbl60gVGprhUf44yi67ymVGqQN0I/edit?usp=sharing";
 let googleTokenClient = null;
 let googleAccessToken = sessionStorage.getItem("sds-google-calendar-token") || "";
-const savedSheetsUrl = localStorage.getItem("sds-google-sheets-url") || "";
+const savedSheetsUrl = localStorage.getItem("sds-google-sheets-url") || DEFAULT_SHEETS_URL;
 const content = document.querySelector("#app-content");
 const title = document.querySelector("#page-title");
 const money = value => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -43,7 +44,7 @@ function connectGoogleCalendar() {
       }
     });
   }
-  googleTokenClient.requestAccessToken({ prompt: googleAccessToken ? "" : "consent" });
+  googleTokenClient.requestAccessToken({ prompt: googleAccessToken ? "" : "select_account" });
 }
 function sheetsCsvUrl(value) {
   try {
@@ -57,7 +58,7 @@ function sheetsCsvUrl(value) {
   }
 }
 async function connectGoogleSheets() {
-  const current = localStorage.getItem("sds-google-sheets-url") || "";
+  const current = localStorage.getItem("sds-google-sheets-url") || DEFAULT_SHEETS_URL;
   document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="sheets-modal"><form class="modal"><h2>Conectar Google Sheets</h2><p>Cole o link compartilhado da sua planilha.</p><label>Link da planilha<input name="url" type="url" value="${escapeHtml(current)}" required placeholder="https://docs.google.com/spreadsheets/d/..."></label><div class="modal-actions"><button type="button" class="secondary-button" data-close>Cancelar</button><button class="primary-button">Carregar dados</button></div></form></div>`);
   const modal = document.querySelector("#sheets-modal");
   modal.querySelector("[data-close]").onclick = () => modal.remove();
@@ -74,7 +75,7 @@ async function connectGoogleSheets() {
     await loadGoogleSheet(value, csvUrl);
   };
 }
-async function loadGoogleSheet(value, csvUrl) {
+async function loadGoogleSheet(value, csvUrl, options = {}) {
   const button = document.querySelector("#sheets-button");
   button.disabled = true;
   button.textContent = "Lendo Google Sheets...";
@@ -90,9 +91,13 @@ async function loadGoogleSheet(value, csvUrl) {
     localStorage.setItem("sds-google-sheets-url", value.trim());
     save();
     navigate("clients");
-    alert(`${imported.length} clientes carregados do Google Sheets.`);
+    if (!options.silent) alert(`${imported.length} clientes carregados do Google Sheets.`);
   } catch (error) {
-    alert(`Não foi possível ler a planilha: ${error.message} Verifique se o compartilhamento está como "Qualquer pessoa com o link".`);
+    if (options.silent) {
+      console.error("Não foi possível carregar a planilha padrão:", error);
+    } else {
+      alert(`Não foi possível ler a planilha: ${error.message} Verifique se o compartilhamento está como "Qualquer pessoa com o link".`);
+    }
   } finally {
     button.disabled = false;
     button.textContent = localStorage.getItem("sds-google-sheets-url") ? "Google Sheets conectado" : "Conectar Google Sheets";
@@ -259,4 +264,8 @@ document.querySelector("#csv-input").addEventListener("change", async event => {
 });
 navigate("dashboard");
 setGoogleStatus(Boolean(googleAccessToken));
-if (savedSheetsUrl) document.querySelector("#sheets-button").textContent = "Google Sheets conectado";
+if (savedSheetsUrl) {
+  document.querySelector("#sheets-button").textContent = "Google Sheets conectado";
+  const csvUrl = sheetsCsvUrl(savedSheetsUrl);
+  if (csvUrl) loadGoogleSheet(savedSheetsUrl, csvUrl, { silent: true });
+}
